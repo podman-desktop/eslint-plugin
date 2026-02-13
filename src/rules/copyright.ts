@@ -17,7 +17,80 @@
  *******************************************************************************/
 
 import type { Rule } from 'eslint';
+import { execFileSync } from 'node:child_process';
 import { lstatSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+let gitFileYears: Map<string, number> | undefined;
+let gitDirtyFiles: Set<string> | undefined;
+let gitRepoRoot: string | undefined;
+let gitAvailable: boolean | undefined;
+
+function loadGitFileYears(): void {
+  if (gitAvailable !== undefined) return;
+  try {
+    gitRepoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+      stdio: 'pipe',
+      encoding: 'utf-8',
+    }).trim();
+    gitAvailable = true;
+  } catch {
+    gitAvailable = false;
+    return;
+  }
+
+  const map = new Map<string, number>();
+  gitFileYears = map;
+  const root = gitRepoRoot;
+  try {
+    const output = execFileSync(
+      'git',
+      ['log', '--format=format:COMMIT:%ad', '--date=format:%Y', '--name-only', '--diff-filter=ACDMRT'],
+      { stdio: 'pipe', encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 },
+    );
+    let currentYear: number | undefined;
+    for (const line of output.split('\n')) {
+      if (!line) continue;
+      if (line.startsWith('COMMIT:')) {
+        currentYear = Number(line.slice(7));
+        continue;
+      }
+      if (currentYear !== undefined) {
+        const absPath = resolve(root, line);
+        if (!map.has(absPath)) {
+          map.set(absPath, currentYear);
+        }
+      }
+    }
+  } catch {
+    gitAvailable = false;
+  }
+
+  const dirtySet = new Set<string>();
+  gitDirtyFiles = dirtySet;
+  try {
+    const statusOutput = execFileSync('git', ['status', '--porcelain'], {
+      stdio: 'pipe',
+      encoding: 'utf-8',
+    });
+    for (const statusLine of statusOutput.split('\n')) {
+      if (!statusLine || statusLine.length < 4) continue;
+      const filePart = statusLine.slice(3);
+      const arrowIndex = filePart.indexOf(' -> ');
+      const file = arrowIndex !== -1 ? filePart.slice(arrowIndex + 4) : filePart;
+      dirtySet.add(resolve(root, file));
+    }
+  } catch {
+    // If status fails, treat all files as clean
+  }
+}
+
+export function _resetGitRepoCache(): void {
+  gitFileYears = undefined;
+  gitDirtyFiles = undefined;
+  gitRepoRoot = undefined;
+  gitAvailable = undefined;
+}
 
 const TEMPLATE_LINES = [
   'Copyright (C) {year} Red Hat, Inc.',
@@ -40,6 +113,15 @@ const TEMPLATE_LINES = [
 const COPYRIGHT_REGEX = /Copyright \(C\) (\d{4})(?:[-,\s]+(\d{4}))* (.+)/;
 
 function getFileYear(filename: string): number {
+  loadGitFileYears();
+  const absPath = resolve(filename);
+  if (gitDirtyFiles?.has(absPath)) {
+    return new Date().getFullYear();
+  }
+  const gitYear = gitFileYears?.get(absPath);
+  if (gitYear !== undefined) {
+    return gitYear;
+  }
   const stats = lstatSync(filename, { throwIfNoEntry: false });
   return stats ? stats.mtime.getFullYear() : new Date().getFullYear();
 }
@@ -110,12 +192,12 @@ const copyrightRule: Rule.RuleModule = {
         const match = COPYRIGHT_REGEX.exec(firstLines);
 
         if (!match) {
-          // No copyright header found
+          // No copyright header found — fix uses current year since the fix itself modifies the file
           context.report({
             node,
             messageId: 'missingHeader',
             fix(fixer) {
-              const header = formatHeader(String(resolveExpectedYear()), filename);
+              const header = formatHeader(String(new Date().getFullYear()), filename);
               return fixer.insertTextBeforeRange([0, 0], header);
             },
           });
@@ -125,6 +207,12 @@ const copyrightRule: Rule.RuleModule = {
         const startYear = Number.parseInt(match[1], 10);
         const endYear = match[2] ? Number.parseInt(match[2], 10) : null;
         const latestYear = endYear ?? startYear;
+
+        // Short-circuit: if header year is current or future, no git lookup needed
+        const thisYear = new Date().getFullYear();
+        if (latestYear >= thisYear) {
+          return;
+        }
 
         const fileYear = resolveExpectedYear();
 
@@ -143,7 +231,7 @@ const copyrightRule: Rule.RuleModule = {
         const absoluteStart = fullTextMatchIndex + yearPartOffset;
         const absoluteEnd = fullTextMatchIndex + match[0].length - holderLen;
 
-        const newYearPart = startYear === fileYear ? String(fileYear) : `${startYear}-${fileYear}`;
+        const newYearPart = startYear === thisYear ? String(thisYear) : `${startYear}-${thisYear}`;
 
         context.report({
           node,
