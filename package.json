@@ -1,6 +1,6 @@
 {
   "name": "@podman-desktop/eslint-plugin",
-  "version": "0.2.0-next",
+  "version": "0.2.0",
   "description": "ESLint plugin with rules for Podman Desktop",
   "license": "Apache-2.0",
   "repository": {
