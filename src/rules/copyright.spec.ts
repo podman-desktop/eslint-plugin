@@ -27,6 +27,10 @@ vi.mock(import('node:child_process'));
 
 const currentYear = new Date().getFullYear();
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
 function makeJsHeader(year: string): string {
   const holder = 'Red Hat, Inc.';
   const separator = '*'.repeat(79);
@@ -78,6 +82,8 @@ function makeYmlHeader(year: string): string {
 }
 
 function mockGitBatch(year: number, filenames: string[] = ['test.ts'], dirtyFiles: string[] = []): void {
+  // Ensure PR mode is not activated by real CI env vars
+  vi.stubEnv('GITHUB_ACTIONS', '');
   const cwd = process.cwd();
   const batchLines = [`COMMIT:${year}`, '', ...filenames, ''];
   const statusLines = dirtyFiles.map(f => ` M ${f}`).join('\n');
@@ -255,6 +261,8 @@ describe('copyright rule - non-git fallback to filesystem', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     _resetGitRepoCache();
+    // Ensure PR mode is not activated by real CI env vars
+    vi.stubEnv('GITHUB_ACTIONS', '');
     // Simulate not being in a git repo
     vi.mocked(execFileSync).mockImplementation(() => {
       throw new Error('not a git repo');
@@ -284,6 +292,8 @@ describe('copyright rule - untracked file falls back to filesystem', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     _resetGitRepoCache();
+    // Ensure PR mode is not activated by real CI env vars
+    vi.stubEnv('GITHUB_ACTIONS', '');
     const cwd = process.cwd();
     // Git repo exists but batch output has no entry for new-untracked.ts
     vi.mocked(execFileSync).mockImplementation((_file: string, args?: readonly string[]) => {
@@ -398,7 +408,6 @@ describe('copyright rule - clean file uses git year for validation', () => {
 
 function mockPRMode(prFiles: string[]): void {
   const cwd = process.cwd();
-  const ghJson = JSON.stringify({ files: prFiles.map(f => ({ path: f })) });
 
   vi.stubEnv('GITHUB_ACTIONS', 'true');
   vi.stubEnv('GITHUB_EVENT_NAME', 'pull_request');
@@ -410,9 +419,9 @@ function mockPRMode(prFiles: string[]): void {
     if (file === 'git' && args?.[0] === 'rev-parse') {
       return `${cwd}\n`;
     }
-    // gh pr view
-    if (file === 'gh' && args?.[0] === 'pr') {
-      return ghJson;
+    // gh api --paginate repos/{repo}/pulls/{number}/files --jq '.[].filename'
+    if (file === 'gh' && args?.[0] === 'api') {
+      return prFiles.join('\n') + '\n';
     }
     return '';
   });
@@ -424,10 +433,6 @@ describe('copyright rule - GitHub Actions PR mode', () => {
     _resetGitRepoCache();
     vi.unstubAllEnvs();
     mockPRMode(['test.ts']);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 
   ruleTester.run('copyright (PR changed file)', copyrightRule, {
@@ -476,10 +481,6 @@ describe('copyright rule - GitHub Actions PR mode skips non-PR files', () => {
     vi.unstubAllEnvs();
     // Only test.ts is in the PR, not other-file.ts
     mockPRMode(['test.ts']);
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
   });
 
   ruleTester.run('copyright (PR non-changed file)', copyrightRule, {

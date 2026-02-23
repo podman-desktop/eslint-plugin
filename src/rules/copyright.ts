@@ -59,22 +59,20 @@ function loadPRChangedFiles(root: string): boolean {
   if (!prNumber) return false;
 
   const repo = process.env.GITHUB_REPOSITORY;
+  if (!repo) return false;
+
   try {
-    const args = ['pr', 'view', prNumber, '--json', 'files'];
-    if (repo) {
-      args.push('--repo', repo);
-    }
-    const output = execFileSync('gh', args, {
-      stdio: 'pipe',
-      encoding: 'utf-8',
-    });
-    const data = JSON.parse(output);
+    // Use REST API with --paginate to handle PRs with >100 files
+    // (gh pr view --json files is capped at 100 by GitHub's GraphQL API)
+    const output = execFileSync(
+      'gh',
+      ['api', '--paginate', `repos/${repo}/pulls/${prNumber}/files`, '--jq', '.[].filename'],
+      { stdio: 'pipe', encoding: 'utf-8' },
+    );
     const changedSet = new Set<string>();
-    if (Array.isArray(data.files)) {
-      for (const file of data.files) {
-        if (file.path) {
-          changedSet.add(resolve(root, file.path));
-        }
+    for (const line of output.split('\n')) {
+      if (line) {
+        changedSet.add(resolve(root, line));
       }
     }
     prChangedFiles = changedSet;
@@ -244,7 +242,7 @@ const copyrightRule: Rule.RuleModule = {
 
     // In PR mode, skip files not modified in the PR
     loadGitFileYears();
-    if (prMode && !prChangedFiles?.has(resolve(filename))) {
+    if (prMode && !prChangedFiles?.has(resolve(gitRepoRoot ?? '', filename))) {
       return {};
     }
 
