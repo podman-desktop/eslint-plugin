@@ -17,7 +17,7 @@
  *******************************************************************************/
 
 import { RuleTester } from 'eslint';
-import { describe, vi, beforeEach, it, expect } from 'vitest';
+import { afterEach, describe, vi, beforeEach, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { lstatSync } from 'node:fs';
 import copyrightRule, { _resetGitRepoCache } from '/@/rules/copyright.js';
@@ -393,5 +393,108 @@ describe('copyright rule - clean file uses git year for validation', () => {
         output: `${makeJsHeader(`2022-${currentYear}`)}\nconst x = 1;\n`,
       },
     ],
+  });
+});
+
+function mockPRMode(prFiles: string[]): void {
+  const cwd = process.cwd();
+  const ghJson = JSON.stringify({ files: prFiles.map(f => ({ path: f })) });
+
+  vi.stubEnv('GITHUB_ACTIONS', 'true');
+  vi.stubEnv('GITHUB_EVENT_NAME', 'pull_request');
+  vi.stubEnv('GITHUB_REF', 'refs/pull/42/merge');
+  vi.stubEnv('GITHUB_REPOSITORY', 'podman-desktop/eslint-plugin');
+
+  vi.mocked(execFileSync).mockImplementation((file: string, args?: readonly string[]) => {
+    // git rev-parse --show-toplevel
+    if (file === 'git' && args?.[0] === 'rev-parse') {
+      return `${cwd}\n`;
+    }
+    // gh pr view
+    if (file === 'gh' && args?.[0] === 'pr') {
+      return ghJson;
+    }
+    return '';
+  });
+}
+
+describe('copyright rule - GitHub Actions PR mode', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    _resetGitRepoCache();
+    vi.unstubAllEnvs();
+    mockPRMode(['test.ts']);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  ruleTester.run('copyright (PR changed file)', copyrightRule, {
+    valid: [
+      // PR file with current year → OK
+      {
+        code: `${makeJsHeader(String(currentYear))}\nconst x = 1;\n`,
+        filename: 'test.ts',
+      },
+      // PR file with range ending in current year → OK
+      {
+        code: `${makeJsHeader(`2020-${currentYear}`)}\nconst x = 1;\n`,
+        filename: 'test.ts',
+      },
+    ],
+    invalid: [
+      // PR file with old year → must update to current year
+      {
+        code: `${makeJsHeader('2023')}\nconst x = 1;\n`,
+        filename: 'test.ts',
+        errors: [{ messageId: 'outdatedYear' }],
+        output: `${makeJsHeader(`2023-${currentYear}`)}\nconst x = 1;\n`,
+      },
+      // PR file with range ending before current year → must update
+      {
+        code: `${makeJsHeader('2023-2025')}\nconst x = 1;\n`,
+        filename: 'test.ts',
+        errors: [{ messageId: 'outdatedYear' }],
+        output: `${makeJsHeader(`2023-${currentYear}`)}\nconst x = 1;\n`,
+      },
+      // PR file missing header → must add with current year
+      {
+        code: 'const x = 1;\n',
+        filename: 'test.ts',
+        errors: [{ messageId: 'missingHeader' }],
+        output: `${makeJsHeader(String(currentYear))}\n\nconst x = 1;\n`,
+      },
+    ],
+  });
+});
+
+describe('copyright rule - GitHub Actions PR mode skips non-PR files', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    _resetGitRepoCache();
+    vi.unstubAllEnvs();
+    // Only test.ts is in the PR, not other-file.ts
+    mockPRMode(['test.ts']);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  ruleTester.run('copyright (PR non-changed file)', copyrightRule, {
+    valid: [
+      // File NOT in PR with old year → ignored entirely (no error)
+      {
+        code: `${makeJsHeader('2020')}\nconst x = 1;\n`,
+        filename: 'other-file.ts',
+      },
+      // File NOT in PR with missing header → ignored entirely
+      {
+        code: 'const x = 1;\n',
+        filename: 'other-file.ts',
+      },
+    ],
+    invalid: [],
   });
 });
