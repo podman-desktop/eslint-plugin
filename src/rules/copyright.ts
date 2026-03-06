@@ -18,13 +18,70 @@
 
 import type { Rule } from 'eslint';
 import { execFileSync } from 'node:child_process';
-import { lstatSync } from 'node:fs';
+import { lstatSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 let gitFileYears: Map<string, number> | undefined;
 let gitDirtyFiles: Set<string> | undefined;
 let gitRepoRoot: string | undefined;
 let gitAvailable: boolean | undefined;
+let prMode: boolean = false;
+let prChangedFiles: Set<string> | undefined;
+
+function isGitHubPR(): boolean {
+  return process.env.GITHUB_ACTIONS === 'true' && process.env.GITHUB_EVENT_NAME === 'pull_request';
+}
+
+function getPRNumber(): string | undefined {
+  // Extract PR number from GITHUB_REF (refs/pull/<number>/merge)
+  const ref = process.env.GITHUB_REF;
+  if (ref) {
+    const match = /^refs\/pull\/(\d+)\/merge$/.exec(ref);
+    if (match) return match[1];
+  }
+  // Fallback: read from event payload
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (eventPath) {
+    try {
+      const event = JSON.parse(readFileSync(eventPath, 'utf-8'));
+      if (event?.pull_request?.number) return String(event.pull_request.number);
+    } catch {
+      // ignore
+    }
+  }
+  return undefined;
+}
+
+function loadPRChangedFiles(root: string): boolean {
+  if (!isGitHubPR()) return false;
+
+  const prNumber = getPRNumber();
+  if (!prNumber) return false;
+
+  const repo = process.env.GITHUB_REPOSITORY;
+  if (!repo) return false;
+
+  try {
+    // Use REST API with --paginate to handle PRs with >100 files
+    // (gh pr view --json files is capped at 100 by GitHub's GraphQL API)
+    const output = execFileSync(
+      'gh',
+      ['api', '--paginate', `repos/${repo}/pulls/${prNumber}/files`, '--jq', '.[].filename'],
+      { stdio: 'pipe', encoding: 'utf-8' },
+    );
+    const changedSet = new Set<string>();
+    for (const line of output.split('\n')) {
+      if (line) {
+        changedSet.add(resolve(root, line));
+      }
+    }
+    prChangedFiles = changedSet;
+    prMode = true;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function loadGitFileYears(): void {
   if (gitAvailable !== undefined) return;
@@ -36,6 +93,11 @@ function loadGitFileYears(): void {
     gitAvailable = true;
   } catch {
     gitAvailable = false;
+    return;
+  }
+
+  // In GitHub Actions PR mode, use gh to get changed files and skip git log
+  if (loadPRChangedFiles(gitRepoRoot)) {
     return;
   }
 
@@ -90,6 +152,8 @@ export function _resetGitRepoCache(): void {
   gitDirtyFiles = undefined;
   gitRepoRoot = undefined;
   gitAvailable = undefined;
+  prMode = false;
+  prChangedFiles = undefined;
 }
 
 const TEMPLATE_LINES = [
@@ -114,6 +178,10 @@ const COPYRIGHT_REGEX = /Copyright \(C\) (\d{4})(?:[-,\s]+(\d{4}))* (.+)/;
 
 function getFileYear(filename: string): number {
   loadGitFileYears();
+  // In PR mode, all checked files must have current year
+  if (prMode) {
+    return new Date().getFullYear();
+  }
   const absPath = resolve(filename);
   if (gitDirtyFiles?.has(absPath)) {
     return new Date().getFullYear();
@@ -169,6 +237,12 @@ const copyrightRule: Rule.RuleModule = {
 
     // Fix 1: Skip files before any I/O
     if (isSkippedFile(filename)) {
+      return {};
+    }
+
+    // In PR mode, skip files not modified in the PR
+    loadGitFileYears();
+    if (prMode && !prChangedFiles?.has(resolve(gitRepoRoot ?? '', filename))) {
       return {};
     }
 
