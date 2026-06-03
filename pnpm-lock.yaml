@@ -37,13 +37,13 @@ importers:
         version: 8.60.0(eslint@10.4.1)(typescript@5.9.3)
       vite:
         specifier: ^8.0.0
-        version: 8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
+        version: 8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
       vite-plugin-dts:
         specifier: ^4.5.4
-        version: 4.5.4(@types/node@24.12.4)(rollup@4.57.1)(typescript@5.9.3)(vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))
+        version: 4.5.4(@types/node@24.12.4)(rollup@4.57.1)(typescript@5.9.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))
       vitest:
         specifier: ^4.0.18
-        version: 4.1.7(@types/node@24.12.4)(vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))
+        version: 4.1.7(@types/node@24.12.4)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))
 
 packages:
 
@@ -1543,8 +1543,8 @@ packages:
       vite:
         optional: true
 
-  vite@8.0.15:
-    resolution: {integrity: sha512-qpgllRxrLqwsMAGRdLhsEr9bepaOQk1rxH1xT2coBXLaEB/bfkqQj1j7RMxwMfnYrvO1ZnFMiwX+wBVgnsyn0g==}
+  vite@8.0.16:
+    resolution: {integrity: sha512-h9bXPmJichP5fLmVQo3PyaGSDE2n3aPuomeAlVRm0JLmt4rY6zmPKd59HYI4LNW8oTK7tlTsuC7l/m7awx9Jcw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -2220,13 +2220,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.7(vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))':
+  '@vitest/mocker@4.1.7(vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 4.1.7
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
+      vite: 8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
 
   '@vitest/pretty-format@4.1.7':
     dependencies:
@@ -3008,7 +3008,7 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  vite-plugin-dts@4.5.4(@types/node@24.12.4)(rollup@4.57.1)(typescript@5.9.3)(vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)):
+  vite-plugin-dts@4.5.4(@types/node@24.12.4)(rollup@4.57.1)(typescript@5.9.3)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)):
     dependencies:
       '@microsoft/api-extractor': 7.56.3(@types/node@24.12.4)
       '@rollup/pluginutils': 5.3.0(rollup@4.57.1)
@@ -3021,13 +3021,13 @@ snapshots:
       magic-string: 0.30.21
       typescript: 5.9.3
     optionalDependencies:
-      vite: 8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
+      vite: 8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
     transitivePeerDependencies:
       - '@types/node'
       - rollup
       - supports-color
 
-  vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0):
+  vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
@@ -3040,10 +3040,10 @@ snapshots:
       fsevents: 2.3.3
       yaml: 2.9.0
 
-  vitest@4.1.7(@types/node@24.12.4)(vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)):
+  vitest@4.1.7(@types/node@24.12.4)(vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.7
-      '@vitest/mocker': 4.1.7(vite@8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.7(vite@8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0))
       '@vitest/pretty-format': 4.1.7
       '@vitest/runner': 4.1.7
       '@vitest/snapshot': 4.1.7
@@ -3060,7 +3060,7 @@ snapshots:
       tinyexec: 1.1.2
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
-      vite: 8.0.15(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
+      vite: 8.0.16(@types/node@24.12.4)(esbuild@0.27.3)(yaml@2.9.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.12.4
