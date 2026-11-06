@@ -34,9 +34,7 @@ Add it to your `eslint.config.js`:
 ```js
 import podmanDesktopLinter from '@podman-desktop/eslint-plugin';
 
-export default [
-  podmanDesktopLinter.configs.recommended,
-];
+export default [podmanDesktopLinter.configs.recommended];
 ```
 
 The `recommended` config enables the `copyright` rule as an error for `**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}` files.

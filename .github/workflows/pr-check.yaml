@@ -36,9 +36,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: "windows-2025"
-          - os: "macos-26"
-          - os: "ubuntu-24.04"
+          - os: 'windows-2025'
+          - os: 'macos-26'
+          - os: 'ubuntu-24.04'
     timeout-minutes: 20
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
