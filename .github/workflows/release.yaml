@@ -37,7 +37,6 @@ env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
 jobs:
-
   tag:
     name: Tagging
     runs-on: ubuntu-24.04
@@ -51,15 +50,15 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
           token: ${{ secrets.PODMAN_DESKTOP_BOT_TOKEN }}
-          
+
       - name: Generate tag utilities
         id: TAG_UTIL
         env:
-            INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-            TAG_PATTERN="${INPUT_VERSION}"
-            echo "githubTag=v$TAG_PATTERN" >> ${GITHUB_OUTPUT}
-            echo "extVersion=$TAG_PATTERN" >> ${GITHUB_OUTPUT}
+          TAG_PATTERN="${INPUT_VERSION}"
+          echo "githubTag=v$TAG_PATTERN" >> ${GITHUB_OUTPUT}
+          echo "extVersion=$TAG_PATTERN" >> ${GITHUB_OUTPUT}
 
       - name: tag
         env:
