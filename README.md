@@ -18,6 +18,7 @@ Requires an Apache 2.0 copyright header at the top of every source file.
 2. **Outdated year** -- reports `outdatedYear` when the copyright year is older than the file's last-modified year, and auto-fixes by appending a year range (e.g. `2024-2026`).
 
 The header format adapts to the file type:
+
 - JS/TS files use `/* ... */` block comments.
 - YAML files use `#` line comments.
 
